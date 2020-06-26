@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 
 import Card from '../UI/Card'
 import './IngredientForm.css'
+import LoadingIndicator from '../UI/LoadingIndicator'
 
 const IngredientForm = React.memo((props) => {
 	//useState always return an array with two elem: first is curret state snapshot, the second is funcion allows update the state:
@@ -45,6 +46,7 @@ const IngredientForm = React.memo((props) => {
 					</div>
 					<div className='ingredient-form__actions'>
 						<button type='submit'>Add Ingredient</button>
+            {props.loading && <LoadingIndicator /> }
 					</div>
 				</form>
 			</Card>

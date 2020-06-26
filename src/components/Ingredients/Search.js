@@ -1,19 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react'
+import Card from '../UI/Card'
+import './Search.css'
 
-import Card from '../UI/Card';
-import './Search.css';
+const Search = React.memo((props) => {
+	//object destructuring:
+	const { onLoadIngredients } = props
+	const [enteredFilter, setEnteredFilter] = useState('')
+	const inputRef = useRef()
 
-const Search = React.memo(props => {
-  return (
-    <section className="search">
-      <Card>
-        <div className="search-input">
-          <label>Filter by Title</label>
-          <input type="text" />
-        </div>
-      </Card>
-    </section>
-  );
-});
+	useEffect(
+		() => {
+			const timer = setTimeout(() => {
+				//enteredfilter will not be the current value but the old one, 500mlsec ago:
+				//if current value (because inputRef defined outside of the closure) is the same as it was when we set the timer
+				if (enteredFilter === inputRef.current.value) {
+					const query =
+						enteredFilter.length === 0
+							? ''
+							: `?orderBy="title"&equalTo="${enteredFilter}"`
+					fetch(
+						'https://react-hooks-olesia.firebaseio.com/ingredients.json' + query
+					)
+						.then((res) => res.json())
+						.then((responseData) => {
+							const loadedIngredients = []
+							for (const key in responseData) {
+								loadedIngredients.push({
+									id: key,
+									title: responseData[key].title,
+									amount: responseData[key].amount,
+								})
+							}
+							console.log('search', loadedIngredients)
+							onLoadIngredients(loadedIngredients)
+						})
+				}
+			}, 500)
+			//this function will run before same useEffect runs again
+			//(if the effect runs once ([]) the cleanup function will only run when component unmounted
+			return () => {
+				clearTimeout(timer)
+			}
+		},
+		//in JS, functions are objects and and behave like any other value, therefore, they can change:
+		[enteredFilter, onLoadIngredients, inputRef]
+	)
 
-export default Search;
+	return (
+		<section className='search'>
+			<Card>
+				<div className='search-input'>
+					<label>Filter by Title</label>
+					<input
+						ref={inputRef}
+						type='text'
+						value={enteredFilter}
+						onChange={(event) => setEnteredFilter(event.target.value)}
+					/>
+				</div>
+			</Card>
+		</section>
+	)
+})
+
+export default Search
