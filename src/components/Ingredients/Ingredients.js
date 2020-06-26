@@ -1,17 +1,44 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useReducer } from 'react'
 import IngredientForm from './IngredientForm'
 import Search from './Search'
 import IngredientList from './IngredientList'
 import ErrorModal from '../UI/ErrorModal'
 
+const ingredientReducer = (currentIngredients, action) => {
+	switch (action.type) {
+		case 'SET':
+			return action.ingredients
+		case 'ADD':
+			return [...currentIngredients, action.ingredient]
+		case 'DELETE':
+			return currentIngredients.filter(ing=>ing.id !== action.id)	
+		default:
+			throw new Error('should not get there')
+	}
+}
+
+const httpReducer = (httpState, action) => {
+	switch(action.type){
+		case 'SEND': 
+			return {}
+		case 'RESPONSE':
+		case 'ERROR':	
+		default:
+			throw new Error('should not get there')	
+	}
+}
+
 function Ingredients() {
-	const [userIngredients, setUserIngredients] = useState([])
+	const [userIngredients, dispatch] = useReducer(ingredientReducer, [])
+	// const [userIngredients, setUserIngredients] = useState([])
+	
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState()
 
 	//useCallback caches it, so that this function will survive render cycles
 	const filteredIngredientsHandler = useCallback((filteredIngredients) => {
-		setUserIngredients(filteredIngredients)
+		// setUserIngredients(filteredIngredients)
+		dispatch({type: 'SET', ingredients: filteredIngredients})
 	}, [])
 
 	const addIngredient = (ing) => {
@@ -27,10 +54,11 @@ function Ingredients() {
 			})
 			.then((responseData) => {
 				//firebase specific: 'name' is id
-				setUserIngredients((prevIngredients) => [
-					...prevIngredients,
-					{ id: responseData.name, ...ing },
-				])
+				// setUserIngredients((prevIngredients) => [
+				// 	...prevIngredients,
+				// 	{ id: responseData.name, ...ing },
+				// ])
+			dispatch({type: 'ADD', ingredient: { id: responseData.name, ...ing }})	
 			})
 	}
 
@@ -41,16 +69,16 @@ function Ingredients() {
 		})
 			.then((response) => {
 				setIsLoading(false)
-				console.log('res:', response)
-				setUserIngredients((prevIngredients) =>
-					prevIngredients.filter((ing) => ing.id !== id)
-				)
+				// setUserIngredients((prevIngredients) =>
+				// 	prevIngredients.filter((ing) => ing.id !== id)
+				// )
+				dispatch({type: 'DELETE', id: id})
 			})
 			.catch((error) => {
 				setError(error.message)
 			})
 	}
-
+	//this will trigger one render cycle
 	const clearError = () => {
 		setError(null)
 		setIsLoading(false)
