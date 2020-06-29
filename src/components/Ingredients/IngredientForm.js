@@ -8,7 +8,6 @@ const IngredientForm = React.memo((props) => {
 	//useState always return an array with two elem: first is curret state snapshot, the second is funcion allows update the state:
 	const [title, setTitle] = useState('')
 	const [amount, setAmount] = useState('')
-
 	const submitHandler = (event) => {
     event.preventDefault()
     props.onAdd({title: title, amount: amount})
