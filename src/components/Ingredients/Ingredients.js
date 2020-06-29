@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useReducer } from 'react'
+import React, { useCallback, useReducer } from 'react'
 import IngredientForm from './IngredientForm'
 import Search from './Search'
 import IngredientList from './IngredientList'
@@ -17,12 +17,16 @@ const ingredientReducer = (currentIngredients, action) => {
 	}
 }
 
-const httpReducer = (httpState, action) => {
+const httpReducer = (curHttpState, action) => {
 	switch(action.type){
 		case 'SEND': 
-			return {}
+			return {loading: true, error: null}
 		case 'RESPONSE':
-		case 'ERROR':	
+			return {...curHttpState, loading: false}
+		case 'ERROR':
+			return {loading: false, error: action.errorMessage}	
+		case 'CLEAR':
+			return {...curHttpState, error: null}	
 		default:
 			throw new Error('should not get there')	
 	}
@@ -31,9 +35,9 @@ const httpReducer = (httpState, action) => {
 function Ingredients() {
 	const [userIngredients, dispatch] = useReducer(ingredientReducer, [])
 	// const [userIngredients, setUserIngredients] = useState([])
-	
-	const [isLoading, setIsLoading] = useState(false)
-	const [error, setError] = useState()
+	const [httpState, dispatchHttp] = useReducer(httpReducer, {loading: false, error: null})
+	// const [isLoading, setIsLoading] = useState(false)
+	// const [error, setError] = useState()
 
 	//useCallback caches it, so that this function will survive render cycles
 	const filteredIngredientsHandler = useCallback((filteredIngredients) => {
@@ -42,14 +46,14 @@ function Ingredients() {
 	}, [])
 
 	const addIngredient = (ing) => {
-		setIsLoading(true)
+		dispatchHttp({type: 'SEND'})
 		fetch('https://react-hooks-olesia.firebaseio.com/ingredients.json', {
 			method: 'POST',
 			body: JSON.stringify(ing),
 			headers: { 'Content-Type': 'application/json' },
 		})
 			.then((response) => {
-				setIsLoading(false)
+				dispatchHttp({type: 'RESPONSE'})
 				return response.json()
 			})
 			.then((responseData) => {
@@ -63,31 +67,30 @@ function Ingredients() {
 	}
 
 	const removeItemHandler = (id) => {
-		setIsLoading(true)
+		dispatchHttp({type: 'SEND'})
 		fetch(`https://react-hooks-olesia.firebaseio.com/ingredients/${id}.json`, {
 			method: 'DELETE',
 		})
 			.then((response) => {
-				setIsLoading(false)
+				dispatchHttp({type: 'RESPONSE'})
 				// setUserIngredients((prevIngredients) =>
 				// 	prevIngredients.filter((ing) => ing.id !== id)
 				// )
 				dispatch({type: 'DELETE', id: id})
 			})
 			.catch((error) => {
-				setError(error.message)
+				dispatchHttp({type: 'ERROR', errorMessage: error.message})
 			})
 	}
 	//this will trigger one render cycle
 	const clearError = () => {
-		setError(null)
-		setIsLoading(false)
+		dispatchHttp({type: 'CLEAR'})
 	}
 
 	return (
 		<div className='App'>
-			{error && <ErrorModal onClose={clearError}>{error.message}</ErrorModal>}
-			<IngredientForm onAdd={addIngredient} loading={isLoading} />
+			{httpState.error && <ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>}
+			<IngredientForm onAdd={addIngredient} loading={httpState.loading} />
 
 			<section>
 				<Search onLoadIngredients={filteredIngredientsHandler} />
