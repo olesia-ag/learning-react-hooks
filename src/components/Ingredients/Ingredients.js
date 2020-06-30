@@ -1,8 +1,9 @@
-import React, { useCallback, useReducer, useMemo } from 'react'
+import React, { useCallback, useReducer, useMemo, useEffect } from 'react'
 import IngredientForm from './IngredientForm'
 import Search from './Search'
 import IngredientList from './IngredientList'
 import ErrorModal from '../UI/ErrorModal'
+import useHttp from '../../hook/http'
 
 const ingredientReducer = (currentIngredients, action) => {
 	switch (action.type) {
@@ -17,30 +18,25 @@ const ingredientReducer = (currentIngredients, action) => {
 	}
 }
 
-const httpReducer = (curHttpState, action) => {
-	switch (action.type) {
-		case 'SEND':
-			return { loading: true, error: null }
-		case 'RESPONSE':
-			return { ...curHttpState, loading: false }
-		case 'ERROR':
-			return { loading: false, error: action.errorMessage }
-		case 'CLEAR':
-			return { ...curHttpState, error: null }
-		default:
-			throw new Error('should not get there')
-	}
-}
-
 function Ingredients() {
 	const [userIngredients, dispatch] = useReducer(ingredientReducer, [])
-	// const [userIngredients, setUserIngredients] = useState([])
-	const [httpState, dispatchHttp] = useReducer(httpReducer, {
-		loading: false,
-		error: null,
-	})
-	// const [isLoading, setIsLoading] = useState(false)
-	// const [error, setError] = useState()
+	const {
+		isLoading,
+		data,
+		error,
+		sendRequest,
+		reqExtra,
+		reqIdentifier,
+	} = useHttp()
+
+	// will listen to the change of the data:
+	useEffect(() => {
+		if (!isLoading && !error && reqIdentifier === 'REMOVE_INGREDIENT') {
+			dispatch({ type: 'DELETE', id: reqExtra })
+		} else if (!isLoading && !error &&  reqIdentifier === 'ADD_INGREDIENT') {
+			dispatch({ type: 'ADD', ingredient: { id: data.name, ...reqExtra } })
+		}
+	}, [data, reqExtra, reqIdentifier, isLoading, error])
 
 	//useCallback caches it, so that this function will survive render cycles
 	const filteredIngredientsHandler = useCallback((filteredIngredients) => {
@@ -48,47 +44,53 @@ function Ingredients() {
 		dispatch({ type: 'SET', ingredients: filteredIngredients })
 	}, [])
 
-	const addIngredient = useCallback((ing) => {
-		dispatchHttp({ type: 'SEND' })
-		fetch('https://react-hooks-olesia.firebaseio.com/ingredients.json', {
-			method: 'POST',
-			body: JSON.stringify(ing),
-			headers: { 'Content-Type': 'application/json' },
-		})
-			.then((response) => {
-				dispatchHttp({ type: 'RESPONSE' })
-				return response.json()
-			})
-			.then((responseData) => {
-				//firebase specific: 'name' is id
-				// setUserIngredients((prevIngredients) => [
-				// 	...prevIngredients,
-				// 	{ id: responseData.name, ...ing },
-				// ])
-				dispatch({ type: 'ADD', ingredient: { id: responseData.name, ...ing } })
-			})
+	const addIngredient = useCallback((ingredient) => {
+		sendRequest(
+			'https://react-hooks-olesia.firebaseio.com/ingredients.json',
+			'POST',
+			JSON.stringify(ingredient),
+			ingredient,
+			'ADD_INGREDIENT'
+		)
 	}, [])
 
-	const removeItemHandler = useCallback((id) => {
-		dispatchHttp({ type: 'SEND' })
-		fetch(`https://react-hooks-olesia.firebaseio.com/ingredients/${id}.json`, {
-			method: 'DELETE',
-		})
-			.then((response) => {
-				dispatchHttp({ type: 'RESPONSE' })
-				// setUserIngredients((prevIngredients) =>
-				// 	prevIngredients.filter((ing) => ing.id !== id)
-				// )
-				dispatch({ type: 'DELETE', id: id })
-			})
-			.catch((error) => {
-				dispatchHttp({ type: 'ERROR', errorMessage: error.message })
-			})
-	}, [])
+	// dispatchHttp({ type: 'SEND' })
+	// fetch('https://react-hooks-olesia.firebaseio.com/ingredients.json', {
+	// 	method: 'POST',
+	// 	body: JSON.stringify(ing),
+	// 	headers: { 'Content-Type': 'application/json' },
+	// })
+	// .then((response) => {
+	// dispatchHttp({ type: 'RESPONSE' })
+	// 	return response.json()
+	// })
+	// .then((responseData) => {
+	//firebase specific: 'name' is id
+	// setUserIngredients((prevIngredients) => [
+	// 	...prevIngredients,
+	// 	{ id: responseData.name, ...ing },
+	// ])
+	// 	dispatch({ type: 'ADD', ingredient: { id: responseData.name, ...ing } })
+	// })
+	// }, [])
+
+	const removeItemHandler = useCallback(
+		(id) => {
+			// dispatchHttp({ type: 'SEND' })
+			sendRequest(
+				`https://react-hooks-olesia.firebaseio.com/ingredients/${id}.json`,
+				'DELETE',
+				null,
+				id,
+				'REMOVE_INGREDIENT'
+			)
+		},
+		[sendRequest]
+	)
 
 	//this will trigger one render cycle
 	const clearError = useCallback(() => {
-		dispatchHttp({ type: 'CLEAR' })
+		// dispatchHttp({ type: 'CLEAR' })
 	}, [])
 
 	const ingredientList = useMemo(() => {
@@ -102,10 +104,8 @@ function Ingredients() {
 
 	return (
 		<div className='App'>
-			{httpState.error && (
-				<ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>
-			)}
-			<IngredientForm onAdd={addIngredient} loading={httpState.loading} />
+			{error && <ErrorModal onClose={clearError}>{error}</ErrorModal>}
+			<IngredientForm onAdd={addIngredient} loading={isLoading} />
 
 			<section>
 				<Search onLoadIngredients={filteredIngredientsHandler} />
