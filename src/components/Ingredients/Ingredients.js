@@ -27,6 +27,7 @@ function Ingredients() {
 		sendRequest,
 		reqExtra,
 		reqIdentifier,
+		clear
 	} = useHttp()
 
 	// will listen to the change of the data:
@@ -52,31 +53,11 @@ function Ingredients() {
 			ingredient,
 			'ADD_INGREDIENT'
 		)
-	}, [])
+	}, [sendRequest])
 
-	// dispatchHttp({ type: 'SEND' })
-	// fetch('https://react-hooks-olesia.firebaseio.com/ingredients.json', {
-	// 	method: 'POST',
-	// 	body: JSON.stringify(ing),
-	// 	headers: { 'Content-Type': 'application/json' },
-	// })
-	// .then((response) => {
-	// dispatchHttp({ type: 'RESPONSE' })
-	// 	return response.json()
-	// })
-	// .then((responseData) => {
-	//firebase specific: 'name' is id
-	// setUserIngredients((prevIngredients) => [
-	// 	...prevIngredients,
-	// 	{ id: responseData.name, ...ing },
-	// ])
-	// 	dispatch({ type: 'ADD', ingredient: { id: responseData.name, ...ing } })
-	// })
-	// }, [])
 
 	const removeItemHandler = useCallback(
 		(id) => {
-			// dispatchHttp({ type: 'SEND' })
 			sendRequest(
 				`https://react-hooks-olesia.firebaseio.com/ingredients/${id}.json`,
 				'DELETE',
@@ -89,9 +70,9 @@ function Ingredients() {
 	)
 
 	//this will trigger one render cycle
-	const clearError = useCallback(() => {
-		// dispatchHttp({ type: 'CLEAR' })
-	}, [])
+	// const clearError = useCallback(() => {
+	// 	clear()
+	// }, [])
 
 	const ingredientList = useMemo(() => {
 		return (
@@ -104,7 +85,7 @@ function Ingredients() {
 
 	return (
 		<div className='App'>
-			{error && <ErrorModal onClose={clearError}>{error}</ErrorModal>}
+			{error && <ErrorModal onClose={clear}>{error}</ErrorModal>}
 			<IngredientForm onAdd={addIngredient} loading={isLoading} />
 
 			<section>
